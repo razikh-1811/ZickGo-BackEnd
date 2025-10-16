@@ -23,10 +23,16 @@ app.use(cors({
     "https://zikh-go-admin.vercel.app"
   ],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders:["content-type","Authorization"],
-  credentials: true
+  credentials: true,
+  allowedHeaders: ["Content-Type", "Authorization", "token"] // add 'token' here
 }));
-app.options('/*', cors());
+
+// Preflight for all routes
+app.options("*", cors({
+  allowedHeaders: ["Content-Type", "Authorization", "token"]
+}));
+
+
 
 
 
