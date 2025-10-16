@@ -1,42 +1,45 @@
+// server.js
 import express from "express";
 import cors from "cors";
-import 'dotenv/config';
-import mongoose from "mongoose";
-import Stripe from "stripe";
-import path from "path";
-import { fileURLToPath } from "url";
-
-// Import your route files
+import 'dotenv/config';            // Load .env variables first
+import { connectDB } from "./config/db.js";
 import foodRouter from "./routes/foodRoute.js";
 import userRouter from "./routes/UserRoute.js";
 import cartRouter from "./routes/cartRoute.js";
 import orderRouter from "./routes/orderRoute.js";
+import Stripe from "stripe";
+import path from "path";
+import { fileURLToPath } from "url";
 
 const app = express();
 const port = process.env.PORT || 4000;
 
-// ✅ Middleware
-app.use(express.json());
+// ✅ CORS configuration for frontend
 app.use(cors({
   origin: [
-    "https://zick-go-frontend.vercel.app",   // your frontend
-    "https://zikh-go-admin.vercel.app"       // your admin panel
+    "https://zick-go-frontend.vercel.app",   // frontend
+    "https://zikh-go-admin.vercel.app"       // admin panel
   ],
-  methods: ["GET", "POST", "PUT", "DELETE"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "token"],
   credentials: true
 }));
 
-// ✅ Serve uploaded images
+// ✅ Handle preflight requests
+app.options("*", cors());
+
+// ✅ Middleware
+app.use(express.json());
+
+// Serve uploaded images
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 app.use("/images", express.static(path.join(__dirname, "uploads")));
 
-// ✅ Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ MongoDB connected successfully"))
-  .catch((err) => console.error("❌ MongoDB connection failed:", err.message));
+// ✅ Connect MongoDB
+connectDB();
 
-// ✅ Stripe connection test
+// ✅ Stripe setup
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 app.get("/test-stripe", async (req, res) => {
@@ -45,7 +48,7 @@ app.get("/test-stripe", async (req, res) => {
     res.json({ success: true, message: "Stripe connected successfully!", balance });
   } catch (error) {
     console.error("Stripe connection failed:", error.message);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: "Stripe not connected", error: error.message });
   }
 });
 
@@ -60,7 +63,14 @@ app.get("/", (req, res) => {
   res.send("🚀 Zick-Go Backend running successfully on Render!");
 });
 
+// ✅ Global error handling (optional but recommended)
+app.use((err, req, res, next) => {
+  console.error("Server error:", err);
+  res.status(500).json({ success: false, message: "Internal Server Error", error: err.message });
+});
+
 // ✅ Start server
 app.listen(port, () => {
   console.log(`✅ Server running on port ${port}`);
 });
+
