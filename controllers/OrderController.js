@@ -6,7 +6,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // 🟢 Place user order and create Stripe checkout session
 const placeOrder = async (req, res) => {
-  const frontend_url = process.env.USER_FRONTEND_URL || process.env.FRONTEND_URL || "https://zick-go-frontend-hwr3q9qx8-razikh-1811s-projects.vercel.app/"; // must be USER app URL
+  const frontend_url = process.env.USER_FRONTEND_URL || process.env.FRONTEND_URL || "https://zick-go-frontend.vercel.app"; // must be USER app URL
   
 
   try {
