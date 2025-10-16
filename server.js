@@ -1,30 +1,42 @@
 import express from "express";
 import cors from "cors";
-import 'dotenv/config';          // Load .env variables first
-import { connectDB } from "./config/db.js";
+import 'dotenv/config';
+import mongoose from "mongoose";
+import Stripe from "stripe";
+import path from "path";
+import { fileURLToPath } from "url";
+
+// Import your route files
 import foodRouter from "./routes/foodRoute.js";
 import userRouter from "./routes/UserRoute.js";
 import cartRouter from "./routes/cartRoute.js";
 import orderRouter from "./routes/orderRoute.js";
-import Stripe from "stripe";
-import path from "path";
-import { fileURLToPath } from "url";
 
 const app = express();
 const port = process.env.PORT || 4000;
 
 // ✅ Middleware
 app.use(express.json());
-app.use(cors());
-// serve uploaded images (absolute path for reliability)
+app.use(cors({
+  origin: [
+    "https://zick-go-frontend.vercel.app",   // your frontend
+    "https://zikh-go-admin.vercel.app"       // your admin panel
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
+}));
+
+// ✅ Serve uploaded images
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 app.use("/images", express.static(path.join(__dirname, "uploads")));
 
-// ✅ Connect Database
-connectDB();
+// ✅ Connect to MongoDB
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log("✅ MongoDB connected successfully"))
+  .catch((err) => console.error("❌ MongoDB connection failed:", err.message));
 
-// ✅ Stripe Test (to verify it's working)
+// ✅ Stripe connection test
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 app.get("/test-stripe", async (req, res) => {
@@ -33,7 +45,7 @@ app.get("/test-stripe", async (req, res) => {
     res.json({ success: true, message: "Stripe connected successfully!", balance });
   } catch (error) {
     console.error("Stripe connection failed:", error.message);
-    res.json({ success: false, message: "Stripe not connected", error: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
@@ -45,7 +57,7 @@ app.use("/api/order", orderRouter);
 
 // ✅ Default route
 app.get("/", (req, res) => {
-  res.send("Server is running successfully 🚀");
+  res.send("🚀 Zick-Go Backend running successfully on Render!");
 });
 
 // ✅ Start server
