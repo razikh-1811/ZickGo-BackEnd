@@ -5,27 +5,35 @@ import Stripe from "stripe";
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 const placeOrder = async (req, res) => {
-  const frontend_url = process.env.USER_FRONTEND_URL || process.env.FRONTEND_URL || "https://zick-go-frontend.vercel.app";
+  const frontend_url =
+    process.env.USER_FRONTEND_URL ||
+    process.env.FRONTEND_URL ||
+    "https://zick-go-frontend.vercel.app";
 
   try {
-    const { userId, items, amount, address } = req.body;
+    const items = req.body.items;
 
-    // ✅ Input validation
-    if (!userId || !items || !Array.isArray(items) || items.length === 0 || !amount || !address) {
-      return res.status(400).json({ success: false, message: "Missing required fields or empty items" });
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ success: false, message: "Cart is empty" });
     }
 
-    // 1️⃣ Create new order in database
-    const newOrder = new orderModel({ userId, items, amount, address });
+    // 1️⃣ Create new order in DB
+    const newOrder = new orderModel({
+      userId: req.body.userId,
+      items,
+      amount: req.body.amount,
+      address: req.body.address,
+    });
+
     await newOrder.save();
 
     // 2️⃣ Clear user's cart
-    await userModel.findByIdAndUpdate(userId, { cartData: {} });
+    await userModel.findByIdAndUpdate(req.body.userId, { cartData: {} });
 
-    // 3️⃣ Prepare Stripe line items
+    // 3️⃣ Prepare Stripe line items safely
     const line_items = items.map((item) => {
       if (!item.name || !item.price || !item.quantity) {
-        throw new Error("Item data incomplete: name, price, or quantity missing");
+        throw new Error("Item data incomplete");
       }
       return {
         price_data: {
@@ -57,11 +65,59 @@ const placeOrder = async (req, res) => {
 
     res.json({ success: true, session_url: session.url });
   } catch (error) {
-    console.error("Stripe Session Error:", error);
-    res.status(500).json({ success: false, message: "Error creating payment session", error: error.message });
+    console.error("Stripe Session Error:", error.message);
+    res.status(500).json({ success: false, message: error.message || "Error creating payment session" });
   }
 };
 
-export { placeOrder, /* keep other exports unchanged */ };
+// Keep rest as it is
+const verifyOrder = async (req, res) => {
+  const { orderId, success } = req.body;
+  try {
+    if (success === "true") {
+      await orderModel.findByIdAndUpdate(orderId, { payment: true });
+      res.json({ success: true, message: "Payment successful" });
+    } else {
+      await orderModel.findByIdAndDelete(orderId);
+      res.json({ success: false, message: "Payment failed" });
+    }
+  } catch (error) {
+    console.error("Verify Error:", error);
+    res.status(500).json({ success: false, message: "Error verifying payment" });
+  }
+};
+
+const userOrders = async (req, res) => {
+  try {
+    const orders = await orderModel.find({ userId: req.body.userId }).sort({ date: -1 });
+    res.json({ success: true, data: orders });
+  } catch (error) {
+    console.error("User Orders Error:", error);
+    res.status(500).json({ success: false, message: "Error fetching user orders" });
+  }
+};
+
+const listOrders = async (req, res) => {
+  try {
+    const orders = await orderModel.find({});
+    res.json({ success: true, data: orders });
+  } catch (error) {
+    console.error("List Orders Error:", error);
+    res.status(500).json({ success: false, message: "Error fetching all orders" });
+  }
+};
+
+const updateStatus = async (req, res) => {
+  try {
+    await orderModel.findByIdAndUpdate(req.body.orderId, { status: req.body.status });
+    res.json({ success: true, message: "Status updated successfully" });
+  } catch (error) {
+    console.error("Update Status Error:", error);
+    res.status(500).json({ success: false, message: "Error updating order status" });
+  }
+};
+
+export { placeOrder, verifyOrder, userOrders, listOrders, updateStatus };
+
 
 
