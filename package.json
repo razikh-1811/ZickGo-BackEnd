@@ -1,14 +1,13 @@
 {
-  "name": "swigi",
+  "name": "ZikhGo",
   "version": "1.0.0",
   "main": "server.js",
-  "type":"module",
+  "type": "module",
   "scripts": {
-    "server":"nodemon server.js"
+    "dev": "nodemon server.js",        // for local use
+    "start": "node api/index.js",      // fallback run
+    "vercel-build": "echo '✅ Backend built for Vercel'"
   },
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "dependencies": {
     "bcrypt": "^6.0.0",
     "body-parser": "^2.2.0",
@@ -18,8 +17,12 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.18.0",
     "multer": "^2.0.2",
-    "nodemon": "^3.1.10",
     "stripe": "^18.5.0",
-    "validator": "^13.15.15"
+    "validator": "^13.15.15",
+    "serverless-http": "^3.2.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
   }
 }
+
