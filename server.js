@@ -13,7 +13,7 @@ import { fileURLToPath } from "url";
 const app = express();
 const port = process.env.PORT || 4000;
 
-// ✅ Middleware
+// Middleware
 app.use(express.json());
 
 // ✅ CORS Configuration
@@ -26,18 +26,18 @@ app.use(cors({
   credentials: true
 }));
 
-// ✅ Preflight for all routes
+// Preflight for all routes
 app.options('/*', cors());
 
-// ✅ Serve uploaded images
+// Serve uploaded images
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 app.use("/images", express.static(path.join(__dirname, "uploads")));
 
-// ✅ Connect to MongoDB
+// Connect to MongoDB
 connectDB();
 
-// ✅ Stripe test route
+// Stripe setup
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 app.get("/test-stripe", async (req, res) => {
   try {
@@ -49,23 +49,23 @@ app.get("/test-stripe", async (req, res) => {
   }
 });
 
-// ✅ API Routes
+// API Routes
 app.use("/api/food", foodRouter);
 app.use("/api/user", userRouter);
 app.use("/api/cart", cartRouter);
 app.use("/api/order", orderRouter);
 
-// ✅ Default root route
+// Default route
 app.get("/", (req, res) => {
   res.send("🚀 Zick-Go Backend running successfully!");
 });
 
-// ✅ 404 handler
+// 404 handler
 app.use((req, res) => {
   res.status(404).json({ success: false, message: "Route not found" });
 });
 
-// ✅ Start server
+// Start server
 app.listen(port, () => {
   console.log(`✅ Server running on port ${port}`);
 });
