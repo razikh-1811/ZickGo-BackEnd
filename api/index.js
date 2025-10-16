@@ -1,74 +1,76 @@
+// api/index.js
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
-import mongoose from "mongoose";
+import 'dotenv/config';          // Load .env variables
+import { connectDB } from "../config/db.js";
+import foodRouter from "../routes/foodRoute.js";
+import userRouter from "../routes/UserRoute.js";
+import cartRouter from "../routes/cartRoute.js";
+import orderRouter from "../routes/orderRoute.js";
+import Stripe from "stripe";
+import path from "path";
+import { fileURLToPath } from "url";
 import serverless from "serverless-http";
-
-dotenv.config();
 
 const app = express();
 
 // Middleware
+app.use(express.json());
 app.use(cors({
   origin: [
     "https://zick-go-frontend.vercel.app",
     "https://zikh-go-admin.vercel.app"
   ],
+  methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
 }));
-app.use(express.json());
 
-// MongoDB connection
+// Serve uploaded images
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use("/images", express.static(path.join(__dirname, "../uploads")));
+
+// ✅ MongoDB connection for serverless
 let isConnected = false;
-async function connectDB() {
-  if (isConnected) return;
-  try {
-    await mongoose.connect(process.env.MONGO_URI);
+async function connectDBOnce() {
+  if (!isConnected) {
+    await connectDB();
     isConnected = true;
-    console.log("MongoDB connected ");
-  } catch (err) {
-    console.error("MongoDB error ", err);
+    console.log("MongoDB connected ✅");
   }
 }
 
-// Test route
-app.get("/api", (req, res) => {
-  res.json({ message: "🚀 Backend running on Vercel!" });
+// Stripe setup
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+app.get("/test-stripe", async (req, res) => {
+  try {
+    const balance = await stripe.balance.retrieve();
+    res.json({ success: true, message: "Stripe connected successfully!", balance });
+  } catch (error) {
+    console.error("Stripe connection failed:", error.message);
+    res.json({ success: false, message: "Stripe not connected", error: error.message });
+  }
 });
 
-// Food list route
-app.get("/api/food/list", async (req, res) => {
-  await connectDB();
-  // Replace with actual Mongo query
-  const foodList = [
-    { _id: "1", name: "Pizza", price: 10 },
-    { _id: "2", name: "Burger", price: 8 }
-  ];
-  res.json({ data: foodList });
+// Wrap all routes with DB connection check
+app.use("/api/food", async (req, res, next) => { await connectDBOnce(); next(); }, foodRouter);
+app.use("/api/user", async (req, res, next) => { await connectDBOnce(); next(); }, userRouter);
+app.use("/api/cart", async (req, res, next) => { await connectDBOnce(); next(); }, cartRouter);
+app.use("/api/order", async (req, res, next) => { await connectDBOnce(); next(); }, orderRouter);
+
+// Default route
+app.get("/", (req, res) => {
+  res.json({ message: "Server is running successfully 🚀" });
 });
 
-// Cart routes (example)
-app.post("/api/cart/add", async (req, res) => {
-  await connectDB();
-  // implement add to cart logic
-  res.json({ message: "Item added to cart" });
-});
-
-app.post("/api/cart/remove", async (req, res) => {
-  await connectDB();
-  // implement remove from cart logic
-  res.json({ message: "Item removed from cart" });
-});
-
-app.post("/api/cart/get", async (req, res) => {
-  await connectDB();
-  // implement get cart logic
-  res.json({ cartData: {} });
-});
+// ❌ Remove app.listen() for Vercel
+// app.listen(port, ...)
 
 // Export for Vercel
 export const handler = serverless(app);
 export default handler;
+
+
 
 
 
