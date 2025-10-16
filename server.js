@@ -12,7 +12,6 @@ import { fileURLToPath } from "url";
 
 const app = express();
 
-
 // Middleware
 app.use(express.json());
 
@@ -24,17 +23,19 @@ app.use(cors({
   ],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   credentials: true,
-  allowedHeaders: ["Content-Type", "Authorization", "token"] // add 'token' here
+  allowedHeaders: ["Content-Type", "Authorization", "token"] // allow token header
 }));
 
-// Preflight for all routes
-app.options("*", cors({
-  allowedHeaders: ["Content-Type", "Authorization", "token"]
-}));
-
-
-
-
+// ✅ Preflight OPTIONS for all routes
+app.options("*", (req, res) => {
+  res.header("Access-Control-Allow-Origin", [
+    "https://zick-go-frontend.vercel.app",
+    "https://zikh-go-admin.vercel.app"
+  ]);
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, token");
+  res.sendStatus(200);
+});
 
 // Serve uploaded images
 const __filename = fileURLToPath(import.meta.url);
@@ -77,6 +78,7 @@ const port = process.env.PORT || 4000;
 app.listen(port, () => {
   console.log(`✅ Server running on port ${port}`);
 });
+
 
 
 
