@@ -4,9 +4,9 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
-    "dev": "nodemon server.js",        // for local use
-    "start": "node api/index.js",      // fallback run
-    "vercel-build": "echo '✅ Backend built for Vercel'"
+    "dev": "nodemon server.js",
+    "start": "node api/index.js",
+    "vercel-build": "echo Backend built for Vercel"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
@@ -25,4 +25,5 @@
     "nodemon": "^3.1.10"
   }
 }
+
 
