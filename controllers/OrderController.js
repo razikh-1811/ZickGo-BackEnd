@@ -4,6 +4,7 @@ import Stripe from "stripe";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
+// 🟢 Place user order and create Stripe checkout session
 const placeOrder = async (req, res) => {
   const frontend_url =
     process.env.USER_FRONTEND_URL ||
@@ -11,24 +12,18 @@ const placeOrder = async (req, res) => {
     "https://zick-go-frontend.vercel.app";
 
   try {
-    const items = req.body.items;
+    const { userId, items, amount, address } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ success: false, message: "Cart is empty" });
     }
 
     // 1️⃣ Create new order in DB
-    const newOrder = new orderModel({
-      userId: req.body.userId,
-      items,
-      amount: req.body.amount,
-      address: req.body.address,
-    });
-
+    const newOrder = new orderModel({ userId, items, amount, address });
     await newOrder.save();
 
     // 2️⃣ Clear user's cart
-    await userModel.findByIdAndUpdate(req.body.userId, { cartData: {} });
+    await userModel.findByIdAndUpdate(userId, { cartData: {} });
 
     // 3️⃣ Prepare Stripe line items safely
     const line_items = items.map((item) => {
@@ -39,7 +34,7 @@ const placeOrder = async (req, res) => {
         price_data: {
           currency: "inr",
           product_data: { name: item.name },
-          unit_amount: item.price * 100,
+          unit_amount: item.price * 100, // convert to paise
         },
         quantity: item.quantity,
       };
@@ -50,7 +45,7 @@ const placeOrder = async (req, res) => {
       price_data: {
         currency: "inr",
         product_data: { name: "Delivery Charges" },
-        unit_amount: 20 * 100,
+        unit_amount: 20 * 100, // ₹20
       },
       quantity: 1,
     });
@@ -70,7 +65,7 @@ const placeOrder = async (req, res) => {
   }
 };
 
-// Keep rest as it is
+// 🟢 Verify order payment
 const verifyOrder = async (req, res) => {
   const { orderId, success } = req.body;
   try {
@@ -87,6 +82,7 @@ const verifyOrder = async (req, res) => {
   }
 };
 
+// 🟢 Get orders for a specific user
 const userOrders = async (req, res) => {
   try {
     const orders = await orderModel.find({ userId: req.body.userId }).sort({ date: -1 });
@@ -97,6 +93,7 @@ const userOrders = async (req, res) => {
   }
 };
 
+// 🟢 List all orders (Admin)
 const listOrders = async (req, res) => {
   try {
     const orders = await orderModel.find({});
@@ -107,6 +104,7 @@ const listOrders = async (req, res) => {
   }
 };
 
+// 🟢 Update order status (Admin)
 const updateStatus = async (req, res) => {
   try {
     await orderModel.findByIdAndUpdate(req.body.orderId, { status: req.body.status });
@@ -118,6 +116,7 @@ const updateStatus = async (req, res) => {
 };
 
 export { placeOrder, verifyOrder, userOrders, listOrders, updateStatus };
+
 
 
 
