@@ -2,9 +2,11 @@ import orderModel from "../models/OrderModel.js";
 import userModel from "../models/usermodel.js";
 import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+if (!process.env.STRIPE_SECRET_KEY) {
+  console.error("STRIPE_SECRET_KEY missing in env!");
+}
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || ""); // will throw on create if empty
 
-// 🟢 Place user order and create Stripe checkout session
 const placeOrder = async (req, res) => {
   const frontend_url =
     process.env.USER_FRONTEND_URL ||
@@ -12,45 +14,60 @@ const placeOrder = async (req, res) => {
     "https://zick-go-frontend.vercel.app";
 
   try {
-    const { userId, items, amount, address } = req.body;
+    console.log("placeOrder handler invoked");
+    console.log("req.body:", JSON.stringify(req.body).slice(0,1000));
 
+    const { userId, items, amount, address } = req.body ?? {};
+
+    // Basic validation
+    if (!userId) return res.status(400).json({ success: false, message: "User ID missing" });
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ success: false, message: "Cart is empty" });
     }
+    if (amount === undefined || typeof amount !== "number") {
+      return res.status(400).json({ success: false, message: "Amount missing or invalid" });
+    }
+    if (!address) return res.status(400).json({ success: false, message: "Address missing" });
 
-    // 1️⃣ Create new order in DB
+    // Save order
     const newOrder = new orderModel({ userId, items, amount, address });
     await newOrder.save();
+    console.log("New order saved:", newOrder._id);
 
-    // 2️⃣ Clear user's cart
-    await userModel.findByIdAndUpdate(userId, { cartData: {} });
+    // Clear user's cart (non-blocking safeguard)
+    try {
+      await userModel.findByIdAndUpdate(userId, { cartData: {} });
+    } catch (e) {
+      console.warn("Failed to clear user cart:", e.message);
+    }
 
-    // 3️⃣ Prepare Stripe line items safely
-    const line_items = items.map((item) => {
-      if (!item.name || !item.price || !item.quantity) {
-        throw new Error("Item data incomplete");
-      }
+    // Build Stripe line items (validate each entry)
+    const line_items = items.map((item, idx) => {
+      if (!item || typeof item !== "object") throw new Error(`Invalid item at index ${idx}`);
+      if (!item.name) throw new Error(`Item.name missing at index ${idx}`);
+      if (item.price == null || isNaN(item.price)) throw new Error(`Item.price invalid at index ${idx}`);
+      if (!item.quantity || isNaN(item.quantity)) throw new Error(`Item.quantity invalid at index ${idx}`);
       return {
         price_data: {
           currency: "inr",
           product_data: { name: item.name },
-          unit_amount: item.price * 100, // convert to paise
+          unit_amount: Math.round(item.price * 100),
         },
-        quantity: item.quantity,
+        quantity: Math.max(1, parseInt(item.quantity, 10)),
       };
     });
 
-    // 4️⃣ Add delivery charge
+    // Add delivery
     line_items.push({
       price_data: {
         currency: "inr",
         product_data: { name: "Delivery Charges" },
-        unit_amount: 20 * 100, // ₹20
+        unit_amount: 20 * 100,
       },
       quantity: 1,
     });
 
-    // 5️⃣ Create Stripe checkout session
+    // Create Stripe session (this may throw if Stripe key invalid)
     const session = await stripe.checkout.sessions.create({
       line_items,
       mode: "payment",
@@ -58,23 +75,25 @@ const placeOrder = async (req, res) => {
       cancel_url: `${frontend_url}/verify?success=false&orderId=${newOrder._id}`,
     });
 
-    res.json({ success: true, session_url: session.url });
-  } catch (error) {
-    console.error("Stripe Session Error:", error.message);
-    res.status(500).json({ success: false, message: error.message || "Error creating payment session" });
+    return res.json({ success: true, session_url: session.url });
+  } catch (err) {
+    console.error("placeOrder error:", err && err.message, err && err.stack);
+    // send the real error message for debugging (can remove detail later)
+    return res.status(500).json({ success: false, message: err.message || "Error creating payment session" });
   }
 };
 
-// 🟢 Verify order payment
+// keep your unchanged controllers, but add safe error handling as done above
 const verifyOrder = async (req, res) => {
-  const { orderId, success } = req.body;
+  const { orderId, success } = req.body ?? {};
   try {
+    if (!orderId) return res.status(400).json({ success: false, message: "Order ID missing" });
     if (success === "true") {
       await orderModel.findByIdAndUpdate(orderId, { payment: true });
-      res.json({ success: true, message: "Payment successful" });
+      return res.json({ success: true, message: "Payment successful" });
     } else {
       await orderModel.findByIdAndDelete(orderId);
-      res.json({ success: false, message: "Payment failed" });
+      return res.json({ success: false, message: "Payment failed" });
     }
   } catch (error) {
     console.error("Verify Error:", error);
@@ -82,10 +101,11 @@ const verifyOrder = async (req, res) => {
   }
 };
 
-// 🟢 Get orders for a specific user
 const userOrders = async (req, res) => {
   try {
-    const orders = await orderModel.find({ userId: req.body.userId }).sort({ date: -1 });
+    const { userId } = req.body ?? {};
+    if (!userId) return res.status(400).json({ success: false, message: "User ID missing" });
+    const orders = await orderModel.find({ userId }).sort({ date: -1 });
     res.json({ success: true, data: orders });
   } catch (error) {
     console.error("User Orders Error:", error);
@@ -93,7 +113,6 @@ const userOrders = async (req, res) => {
   }
 };
 
-// 🟢 List all orders (Admin)
 const listOrders = async (req, res) => {
   try {
     const orders = await orderModel.find({});
@@ -104,10 +123,11 @@ const listOrders = async (req, res) => {
   }
 };
 
-// 🟢 Update order status (Admin)
 const updateStatus = async (req, res) => {
   try {
-    await orderModel.findByIdAndUpdate(req.body.orderId, { status: req.body.status });
+    const { orderId, status } = req.body ?? {};
+    if (!orderId || !status) return res.status(400).json({ success: false, message: "Order ID or status missing" });
+    await orderModel.findByIdAndUpdate(orderId, { status });
     res.json({ success: true, message: "Status updated successfully" });
   } catch (error) {
     console.error("Update Status Error:", error);
