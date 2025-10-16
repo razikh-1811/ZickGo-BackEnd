@@ -11,7 +11,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const app = express();
-const port = process.env.PORT || 4000;
+
 
 // Middleware
 app.use(express.json());
@@ -23,11 +23,11 @@ app.use(cors({
     "https://zikh-go-admin.vercel.app"
   ],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders:["content-type","Authorization"],
   credentials: true
 }));
 
-// Preflight for all routes
-app.options('/*', cors());
+
 
 // Serve uploaded images
 const __filename = fileURLToPath(import.meta.url);
@@ -66,6 +66,7 @@ app.use((req, res) => {
 });
 
 // Start server
+const port = process.env.PORT || 4000;
 app.listen(port, () => {
   console.log(`✅ Server running on port ${port}`);
 });
