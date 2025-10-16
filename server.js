@@ -1,7 +1,6 @@
-// server.js
 import express from "express";
 import cors from "cors";
-import 'dotenv/config';            // Load .env variables first
+import 'dotenv/config';
 import { connectDB } from "./config/db.js";
 import foodRouter from "./routes/foodRoute.js";
 import userRouter from "./routes/UserRoute.js";
@@ -14,63 +13,61 @@ import { fileURLToPath } from "url";
 const app = express();
 const port = process.env.PORT || 4000;
 
-// ✅ CORS configuration for frontend
+// Middleware
+app.use(express.json());
+
+// ✅ CORS Configuration
 app.use(cors({
   origin: [
-    "https://zick-go-frontend.vercel.app",   // frontend
-    "https://zikh-go-admin.vercel.app"       // admin panel
+    "https://zick-go-frontend.vercel.app",
+    "https://zikh-go-admin.vercel.app"
   ],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "token"],
   credentials: true
 }));
 
-// ✅ Handle preflight requests
-app.options("*", cors());
-
-// ✅ Middleware
-app.use(express.json());
+// Preflight requests for all routes
+app.options('/*', cors());
 
 // Serve uploaded images
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 app.use("/images", express.static(path.join(__dirname, "uploads")));
 
-// ✅ Connect MongoDB
+// Connect to MongoDB
 connectDB();
 
-// ✅ Stripe setup
+// Stripe setup
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
 app.get("/test-stripe", async (req, res) => {
   try {
     const balance = await stripe.balance.retrieve();
     res.json({ success: true, message: "Stripe connected successfully!", balance });
   } catch (error) {
     console.error("Stripe connection failed:", error.message);
-    res.status(500).json({ success: false, message: "Stripe not connected", error: error.message });
+    res.json({ success: false, message: "Stripe not connected", error: error.message });
   }
 });
 
-// ✅ API Routes
+// API Routes
 app.use("/api/food", foodRouter);
 app.use("/api/user", userRouter);
 app.use("/api/cart", cartRouter);
 app.use("/api/order", orderRouter);
 
-// ✅ Default route
+// Default route
 app.get("/", (req, res) => {
-  res.send("🚀 Zick-Go Backend running successfully on Render!");
+  res.send("🚀 Zick-Go Backend running successfully!");
 });
 
-// ✅ Global error handling (optional but recommended)
-app.use((err, req, res, next) => {
-  console.error("Server error:", err);
-  res.status(500).json({ success: false, message: "Internal Server Error", error: err.message });
+// 404 for unknown routes
+app.use((req, res) => {
+  res.status(404).json({ success: false, message: "Route not found" });
 });
 
-// ✅ Start server
+// Start server
 app.listen(port, () => {
   console.log(`✅ Server running on port ${port}`);
 });
+
 
