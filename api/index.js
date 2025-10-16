@@ -10,8 +10,8 @@ const app = express();
 
 app.use(cors({
   origin: [
-    "https://your-frontend.vercel.app",
-    "https://your-admin.vercel.app"
+    "https://zick-go-frontend.vercel.app/",
+    "https://zikh-go-admin.vercel.app/"
   ],
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
@@ -32,3 +32,4 @@ app.get("/api", (req, res) => {
 //  Export for Vercel
 export const handler = serverless(app);
 export default handler;
+
