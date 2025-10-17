@@ -11,7 +11,7 @@ const placeOrder = async (req, res) => {
   const frontend_url =
     process.env.USER_FRONTEND_URL ||
     process.env.FRONTEND_URL ||
-    "https://idyllic-cuchufli-3a1ecf.netlify.app/";
+    "https://idyllic-cuchufli-3a1ecf.netlify.app";
 
   try {
     console.log("placeOrder handler invoked");
