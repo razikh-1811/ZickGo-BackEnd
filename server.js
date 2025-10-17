@@ -20,7 +20,7 @@ app.use(express.json());
 app.use(cors({
   origin: [
     "https://idyllic-cuchufli-3a1ecf.netlify.app",
-    "https://zikh-go-admin.vercel.app"
+    "https://zikhgoadmin.netlify.app"
   ],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   credentials: true,
