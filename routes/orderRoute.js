@@ -3,11 +3,21 @@ import { placeOrder, verifyOrder, userOrders, listOrders, updateStatus } from ".
 
 const orderRouter = express.Router();
 
+// Place order
 orderRouter.post("/place", placeOrder);
+
+// Verify payment
 orderRouter.post("/verify", verifyOrder);
-orderRouter.post("/userOrders", userOrders);  // updated route
+
+// Get orders for a specific user (match frontend)
+orderRouter.post("/userOrders", userOrders);
+
+// List all orders (Admin)
 orderRouter.get("/list", listOrders);
+
+// Update order status (Admin)
 orderRouter.put("/status", updateStatus);
 
 export default orderRouter;
+
 
