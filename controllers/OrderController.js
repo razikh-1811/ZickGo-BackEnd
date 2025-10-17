@@ -85,9 +85,10 @@ const placeOrder = async (req, res) => {
 
 // keep your unchanged controllers, but add safe error handling as done above
 const verifyOrder = async (req, res) => {
-  const { orderId, success } = req.body ?? {};
+  const success = req.body.success || req.query.success;
+  const orderId = req.body.orderId || req.query.orderId;
+
   try {
-    if (!orderId) return res.status(400).json({ success: false, message: "Order ID missing" });
     if (success === "true") {
       await orderModel.findByIdAndUpdate(orderId, { payment: true });
       return res.json({ success: true, message: "Payment successful" });
@@ -96,10 +97,11 @@ const verifyOrder = async (req, res) => {
       return res.json({ success: false, message: "Payment failed" });
     }
   } catch (error) {
-    console.error("Verify Error:", error);
+    console.error("Verify Order Error:", error.message);
     res.status(500).json({ success: false, message: "Error verifying payment" });
   }
 };
+
 
 const userOrders = async (req, res) => {
   try {
