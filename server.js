@@ -19,7 +19,7 @@ app.use(express.json());
 // ✅ CORS configuration for frontend and admin panel
 app.use(cors({
   origin: [
-    "https://zick-go-frontend.vercel.app",
+    "https://idyllic-cuchufli-3a1ecf.netlify.app/",
     "https://zikh-go-admin.vercel.app"
   ],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
