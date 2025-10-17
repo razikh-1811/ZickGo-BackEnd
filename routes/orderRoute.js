@@ -10,7 +10,7 @@ orderRouter.post("/place", placeOrder);
 orderRouter.post("/verify", verifyOrder);
 
 // Get orders for a specific user (match frontend)
-orderRouter.post("/userOrders", userOrders);
+orderRouter.post("/userorders", userOrders);
 
 // List all orders (Admin)
 orderRouter.get("/list", listOrders);
